@@ -1,0 +1,52 @@
+---
+title: "Applications"
+description: "Manage your containerized applications"
+icon: "server"
+---
+
+Applications are the core of HyzeCloud. Each application runs in its own isolated container with specified resources.
+
+## Creating an Application
+
+To create an application, you upload a ZIP file containing your source code. You must also specify the runtime environment and resource limits.
+
+### Supported Runtimes
+
+- **Node.js**: `node`
+- **Bun**: `bun`
+- **Python**: `python`
+
+### Resource Limits
+
+You can configure the memory allocation for your container, from 128MB up to 2048MB.
+
+## Managing Lifecycle
+
+You can control the state of your application using the following actions:
+
+- **Start**: Boot up a stopped container.
+- **Stop**: Gracefully shut down a running container.
+- **Restart**: Reboot the container (useful after configuration changes).
+
+## Environment Variables
+
+Securely manage sensitive information like API keys and database credentials using environment variables. These are injected into your container at runtime.
+
+```bash Example
+curl -X PUT https://api.hyzecloud.com/api/apps/{appId}/env 
+  -H "Content-Type: application/json" 
+  -d '{
+    "envVars": {
+      "DATABASE_URL": "postgres://user:pass@host:5432/db",
+      "API_KEY": "secret_key"
+    }
+  }'
+```
+
+## Logs
+
+Access real-time logs to debug and monitor your application's performance. You can fetch the latest logs or stream them.
+
+```bash Example
+curl https://api.hyzecloud.com/api/apps/{appId}/logs?tail=100
+```

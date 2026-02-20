@@ -1,0 +1,63 @@
+---
+title: "Authentication"
+description: "Learn how to authenticate with the HyzeCloud API"
+icon: "lock"
+---
+
+HyzeCloud uses cookie-based authentication for secure API access.
+
+## Methods
+
+We support multiple authentication methods:
+
+- **Email & Password**: Traditional sign-up and sign-in.
+- **OAuth (Social)**: Google and GitHub authentication.
+
+## Session Management
+
+When you successfully authenticate, the API sets a `better-auth.session_token` cookie. You must include this cookie in all subsequent requests to protected endpoints.
+
+### Sign Up
+
+To create a new account:
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.hyzecloud.com/api/auth/sign-up/email 
+  -H "Content-Type: application/json" 
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123",
+    "name": "John Doe"
+  }'
+```
+</CodeGroup>
+
+### Sign In
+
+To log in to an existing account:
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.hyzecloud.com/api/auth/sign-in/email 
+  -H "Content-Type: application/json" 
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123"
+  }'
+```
+</CodeGroup>
+
+### Sign Out
+
+To end your session:
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.hyzecloud.com/api/auth/sign-out
+```
+</CodeGroup>
+
+## User Profile
+
+You can retrieve the currently authenticated user's profile and session information using the `/api/auth/get-session` endpoint.

@@ -1,0 +1,1534 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HyzeCloud API",
+    "version": "1.0.0",
+    "description": "API para gerenciamento de containers e aplicações na plataforma HyzeCloud",
+    "contact": {
+      "name": "HyzeCloud Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Servidor de desenvolvimento"
+    },
+    {
+      "url": "https://api.hyzecloud.com",
+      "description": "Servidor de produção"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Endpoints de verificação de saúde da API"
+    },
+    {
+      "name": "Apps",
+      "description": "Gerenciamento de containers e aplicações"
+    },
+    {
+      "name": "Auth",
+      "description": "Autenticação e gerenciamento de usuários"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Verifica o status da API",
+        "description": "Retorna informações sobre o status e ambiente da API",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "API está funcionando corretamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2024-01-01T00:00:00.000Z"
+                    },
+                    "environment": {
+                      "type": "string",
+                      "enum": ["development", "test", "production"],
+                      "example": "development"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apps": {
+      "get": {
+        "tags": ["Apps"],
+        "summary": "Lista todos os containers",
+        "description": "Retorna uma lista de todos os containers gerenciados pela plataforma",
+        "operationId": "listContainers",
+        "responses": {
+          "200": {
+            "description": "Lista de containers retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "containers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContainerInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Faz deploy de uma nova aplicação",
+        "description": "Cria e inicia um novo container a partir de um arquivo ZIP",
+        "operationId": "deployApp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "name", "runtime", "memoryMB", "startupCommand"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Arquivo ZIP contendo os arquivos da aplicação"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "my-app",
+                    "description": "Nome da aplicação"
+                  },
+                  "runtime": {
+                    "type": "string",
+                    "enum": ["node", "bun", "python"],
+                    "example": "node",
+                    "description": "Runtime da aplicação"
+                  },
+                  "memoryMB": {
+                    "type": "integer",
+                    "minimum": 128,
+                    "maximum": 2048,
+                    "example": 512,
+                    "description": "Memória alocada em MB"
+                  },
+                  "startupCommand": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "npm start",
+                    "description": "Comando para iniciar a aplicação"
+                  },
+                  "envVars": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "example": {
+                      "NODE_ENV": "production",
+                      "PORT": "3000"
+                    },
+                    "description": "Variáveis de ambiente"
+                  },
+                  "exposePort": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535,
+                    "example": 3000,
+                    "description": "Porta a ser exposta (opcional)"
+                  },
+                  "autoRestart": {
+                    "type": "boolean",
+                    "default": true,
+                    "example": true,
+                    "description": "Se o container deve reiniciar automaticamente"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deploy realizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}": {
+      "get": {
+        "tags": ["Apps"],
+        "summary": "Obtém informações de um container",
+        "description": "Retorna informações detalhadas e estatísticas de um container específico",
+        "operationId": "getContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Informações do container retornadas com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "container": {
+                      "$ref": "#/components/schemas/ContainerInfo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Apps"],
+        "summary": "Remove um container",
+        "description": "Remove um container e todos os dados associados",
+        "operationId": "deleteContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container removido com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Container removido com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/start": {
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Inicia um container",
+        "description": "Inicia um container que está parado",
+        "operationId": "startContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container iniciado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Container iniciado com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/stop": {
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Para um container",
+        "description": "Para um container que está em execução",
+        "operationId": "stopContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container parado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Container parado com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/restart": {
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Reinicia um container",
+        "description": "Reinicia um container que está em execução",
+        "operationId": "restartContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container reiniciado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Container reiniciado com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/logs": {
+      "get": {
+        "tags": ["Apps"],
+        "summary": "Obtém logs de um container",
+        "description": "Retorna os logs de um container específico",
+        "operationId": "getContainerLogs",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          },
+          {
+            "name": "tail",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Número de linhas finais dos logs a retornar"
+          },
+          {
+            "name": "timestamps",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Se deve incluir timestamps nos logs"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logs retornados com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "logs": {
+                      "type": "string",
+                      "example": "2024-01-01T00:00:00.000Z App started\n2024-01-01T00:00:01.000Z Listening on port 3000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/env": {
+      "put": {
+        "tags": ["Apps"],
+        "summary": "Atualiza variáveis de ambiente",
+        "description": "Atualiza as variáveis de ambiente de um container",
+        "operationId": "updateEnvVars",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEnvVarsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Variáveis de ambiente atualizadas com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Variáveis de ambiente atualizadas com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/files": {
+      "put": {
+        "tags": ["Apps"],
+        "summary": "Atualiza arquivos da aplicação",
+        "description": "Atualiza os arquivos de um container a partir de um arquivo ZIP",
+        "operationId": "updateContainerFiles",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Arquivo ZIP contendo os novos arquivos da aplicação"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Arquivos atualizados com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Arquivos atualizados com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/backup": {
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Cria um backup do container",
+        "description": "Cria um backup completo do container e seus dados",
+        "operationId": "backupContainer",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "backupId": {
+                      "type": "string",
+                      "example": "backup-1234567890"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Backup criado com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/backups": {
+      "get": {
+        "tags": ["Apps"],
+        "summary": "Lista todos os backups de um container",
+        "description": "Retorna uma lista de todos os backups disponíveis para um container",
+        "operationId": "listBackups",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de backups retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "backups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BackupInfo"
+                      }
+                    },
+                    "statistics": {
+                      "$ref": "#/components/schemas/BackupStatistics"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Apps"],
+        "summary": "Remove todos os backups de um container",
+        "description": "Remove todos os backups associados a um container",
+        "operationId": "deleteAllBackups",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backups removidos com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Todos os backups foram removidos"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/backups/restore": {
+      "post": {
+        "tags": ["Apps"],
+        "summary": "Restaura um container a partir de um backup",
+        "description": "Restaura um container usando um backup específico",
+        "operationId": "restoreBackup",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreBackupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Backup restaurado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Backup restaurado com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/apps/{appId}/backups/{backupId}/download": {
+      "get": {
+        "tags": ["Apps"],
+        "summary": "Baixa um arquivo de backup",
+        "description": "Retorna o arquivo ZIP de um backup específico",
+        "operationId": "downloadBackup",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do container"
+          },
+          {
+            "name": "backupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID do backup"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo de backup retornado com sucesso",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/sign-up/email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Registra um novo usuário com email e senha",
+        "description": "Cria uma nova conta de usuário usando email e senha",
+        "operationId": "signUpEmail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "securePassword123"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuário registrado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Autentica um usuário com email e senha",
+        "description": "Realiza login usando email e senha",
+        "operationId": "signInEmail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "securePassword123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login realizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/sign-out": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Encerra a sessão do usuário",
+        "description": "Realiza logout e invalida a sessão atual",
+        "operationId": "signOut",
+        "responses": {
+          "200": {
+            "description": "Logout realizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/get-session": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Obtém a sessão atual",
+        "description": "Retorna informações sobre a sessão do usuário autenticado",
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "description": "Sessão retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/update-user": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Atualiza informações do usuário",
+        "description": "Atualiza o perfil do usuário autenticado",
+        "operationId": "updateUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe Updated"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "uri",
+                    "example": "https://example.com/avatar.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuário atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Altera a senha do usuário",
+        "description": "Altera a senha do usuário autenticado",
+        "operationId": "changePassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "example": "oldPassword123"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "newPassword123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Senha alterada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/social": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Inicia autenticação social",
+        "description": "Inicia o fluxo de autenticação OAuth com provedor social",
+        "operationId": "signInSocial",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["provider"],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": ["google", "github"],
+                    "example": "google"
+                  },
+                  "callbackURL": {
+                    "type": "string",
+                    "example": "/dashboard"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL de redirecionamento retornada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "example": "https://accounts.google.com/o/oauth2/auth?..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/callback/{provider}": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Callback OAuth",
+        "description": "Endpoint de callback para autenticação OAuth",
+        "operationId": "oauthCallback",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["google", "github"]
+            },
+            "description": "Provedor OAuth"
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Código de autorização OAuth"
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Estado OAuth"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirecionamento após autenticação",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URL de redirecionamento"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeployResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "containerId": {
+            "type": "string",
+            "example": "abc123def456"
+          },
+          "appId": {
+            "type": "string",
+            "example": "my-app"
+          },
+          "message": {
+            "type": "string",
+            "example": "Aplicação implantada com sucesso"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ContainerInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "abc123def456"
+          },
+          "name": {
+            "type": "string",
+            "example": "my-app"
+          },
+          "image": {
+            "type": "string",
+            "example": "node:20-alpine"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "stopped", "restarting", "exited"],
+            "example": "running"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-01T00:00:00.000Z"
+          },
+          "runtime": {
+            "type": "string",
+            "enum": ["node", "bun", "python"],
+            "example": "node"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ContainerStats"
+          },
+          "envVars": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ContainerStats": {
+        "type": "object",
+        "properties": {
+          "cpuPercent": {
+            "type": "number",
+            "format": "float",
+            "example": 45.5
+          },
+          "memoryMB": {
+            "type": "number",
+            "example": 256
+          },
+          "memoryLimitMB": {
+            "type": "number",
+            "example": 512
+          },
+          "pids": {
+            "type": "integer",
+            "example": 5
+          }
+        }
+      },
+      "UpdateEnvVarsRequest": {
+        "type": "object",
+        "required": ["envVars"],
+        "properties": {
+          "envVars": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "NODE_ENV": "production",
+              "PORT": "3000",
+              "API_KEY": "secret-key"
+            }
+          }
+        }
+      },
+      "RestoreBackupRequest": {
+        "type": "object",
+        "required": ["backupId"],
+        "properties": {
+          "backupId": {
+            "type": "string",
+            "example": "backup-1234567890"
+          }
+        }
+      },
+      "BackupInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "backup-1234567890.zip"
+          },
+          "path": {
+            "type": "string",
+            "example": "/backups/my-app/backup-1234567890.zip"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-01T00:00:00.000Z"
+          },
+          "size": {
+            "type": "integer",
+            "example": 1048576,
+            "description": "Tamanho do arquivo em bytes"
+          }
+        }
+      },
+      "BackupStatistics": {
+        "type": "object",
+        "properties": {
+          "totalBackups": {
+            "type": "integer",
+            "example": 5
+          },
+          "totalSize": {
+            "type": "integer",
+            "example": 5242880,
+            "description": "Tamanho total em bytes"
+          },
+          "totalSizeMB": {
+            "type": "number",
+            "format": "float",
+            "example": 5.0,
+            "description": "Tamanho total em MB"
+          },
+          "latestBackupSize": {
+            "type": "integer",
+            "example": 1048576
+          },
+          "latestBackupSizeMB": {
+            "type": "number",
+            "format": "float",
+            "example": 1.0
+          },
+          "maxBackupsAllowed": {
+            "type": "integer",
+            "example": 5
+          },
+          "spaceToFreeIfCleanup": {
+            "type": "integer",
+            "example": 0
+          },
+          "spaceToFreeMB": {
+            "type": "number",
+            "format": "float",
+            "example": 0.0
+          },
+          "cleanupEnabled": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user-123"
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "example": false
+          },
+          "image": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "example": "https://example.com/avatar.jpg"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-01T00:00:00.000Z"
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "session-123"
+          },
+          "userId": {
+            "type": "string",
+            "example": "user-123"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-08T00:00:00.000Z"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "192.168.1.1"
+          },
+          "userAgent": {
+            "type": "string",
+            "example": "Mozilla/5.0..."
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      }
+    },
+    "responses": {
+      "ErrorResponse": {
+        "description": "Resposta de erro",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "error": {
+                  "type": "string",
+                  "example": "Mensagem de erro descritiva"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "better-auth.session_token",
+        "description": "Autenticação baseada em cookie de sessão"
+      }
+    }
+  },
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ]
+}
+

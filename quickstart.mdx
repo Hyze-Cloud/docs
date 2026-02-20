@@ -1,80 +1,57 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Deploy your first application on HyzeCloud"
+icon: "rocket"
 ---
 
-## Get started in three steps
+This guide will walk you through the process of deploying your first application using the HyzeCloud API.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+1.  A HyzeCloud account.
+2.  Your API credentials.
+3.  An application ready to deploy (as a ZIP file).
 
-### Step 2: Deploy your changes
+## Step 1: Authentication
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+First, you need to authenticate with the API. You can sign up using email/password or use a social provider.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```bash
+curl -X POST https://api.hyzecloud.com/api/auth/sign-in/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-email@example.com",
+    "password": "your-password"
+  }'
+```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+This will return a session cookie that you must include in subsequent requests.
 
-### Step 3: Go live
+## Step 2: Prepare Your Application
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+Package your application code into a ZIP file. Ensure your `package.json` (for Node/Bun) or `requirements.txt` (for Python) is in the root of the ZIP.
 
-## Next steps
+## Step 3: Deploy Your App
 
-Now that you have your docs running, explore these key features:
+Use the `/api/apps` endpoint to deploy your application.
 
-<CardGroup cols={2}>
+```bash
+curl -X POST https://api.hyzecloud.com/api/apps \
+  -F "file=@/path/to/your/app.zip" \
+  -F "name=my-first-app" \
+  -F "runtime=node" \
+  -F "memoryMB=512" \
+  -F "startupCommand=npm start"
+```
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+## Step 4: Monitor Deployment
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+You can check the status of your application using the ID returned from the deploy command.
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+```bash
+curl https://api.hyzecloud.com/api/apps/{appId}
+```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+Once the status is `running`, your application is live!
